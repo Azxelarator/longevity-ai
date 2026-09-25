@@ -24,6 +24,17 @@ Task: `nhanes_age_pairwise` — given two people's blood test results, which one
 | Mk.4 | **Order-invariant scoring**: read P(A) vs P(B), average over both orders | 200 | **79.0%** accuracy, **100% consistency by construction**, answers every item. Mean P(A) was 0.39 before the fix (unbiased = 0.50) |
 | Mk.4 (full) | Same, on the **entire** task | 2,102 | Single-order **71.2%** [95% CI 69.2–73.1] → order-invariant **79.2%** [77.4–80.8]. Intervals do not overlap. |
 
+### Stage 3: simple baselines beat the LLM
+Same 2,102 pairs. Baselines are trained on each person's blood values from `nhanes_age_regression` with **5-fold cross-validation split by person**, so every age prediction comes from a model that never saw that person (all 4,204 pairwise participants also appear in the regression task — training on it directly would leak). Units are harmonized first (e.g. creatinine mg/dL → µmol/L).
+
+| Method | Pairwise accuracy | 95% CI | Age MAE |
+|---|---|---|---|
+| LFM2-1.2B-Longevity, order-invariant (Mk.4) | 79.2% | 77.4–80.8 | — |
+| Ridge regression on 30 blood/biometric values | 82.8% | 81.1–84.3 | 9.7 yrs |
+| **Gradient boosting** (HistGradientBoosting) | **87.9%** | **86.5–89.2** | **7.7 yrs** |
+
+The gradient-boosting baseline wins in every age-gap bin. **For predicting age from blood values alone, a few-second CPU model beats this 1.2B LLM.** In fairness: the baselines are fit on ~3,300 people from the same distribution, while the LLM is used zero-shot; and we have not yet measured the LLM's possible advantages (multiple data types, natural-language explanations).
+
 Accuracy by age gap (Mk.4, full 2,102 items): 0–10 yrs 57.7% · 10–20 yrs 71.2% · 20–40 yrs 86.2% · 40+ yrs 96.0%.
 **Remaining weakness:** distinguishing people less than ~20 years apart.
 
@@ -37,7 +48,7 @@ Accuracy by age gap (Mk.4, full 2,102 items): 0–10 yrs 57.7% · 10–20 yrs 71
 See [ROADMAP.md](ROADMAP.md). Short version:
 1. ✅ Better than chance
 2. ✅ (blood only) Answers don't change when the question format changes
-3. ⏳ Beat a simple baseline (e.g. linear model on raw blood values) on the same items
+3. ❌ Beat a simple baseline — **not passed** on blood data: gradient boosting 87.9% vs LLM 79.2%
 4. ⏳ Generalize to unseen data sources
 5. Clinical use — requires doctors and clinical studies, not a solo project
 

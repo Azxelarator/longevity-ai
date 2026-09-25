@@ -80,3 +80,18 @@
 - mean P(A) 0.41 -> หลังแก้ ทาย A/B 1043/1059 (เฉลยจริง 1075/1027)
 - ตามช่วงอายุห่าง: 0-10 57.7% (326) | 10-20 71.2% (607) | 20-40 86.2% (796) | 40+ 96.0% (373)
 - ผล 200 ข้อ (79.0%) ใกล้กับทั้งชุด (79.2%) -> ยืนยันว่า 200 ข้อแรกเป็นตัวแทนได้
+
+## 2026-09-25 (ต่อ) — ขั้นที่ 3 เตรียม baseline
+- nhanes_age_regression = 4206 ข้อ (1 คน + อายุ) | คนใน pairwise (4204) ซ้ำกับ regression ทั้งหมด
+  -> ห้าม train baseline ตรงๆ: ใช้ 5-fold CV แบ่งตามคน ให้ทุกคนได้ out-of-fold prediction
+- หน่วยไม่ตรงกันระหว่างข้อ (เช่น Creatinine mg/dL vs umol/L, Albumin g/dL vs g/L) -> แปลงหน่วยก่อน
+- config extra: cpg_methyl, aging_raw_predict_methylation, nhanes_mortality_regression, gtex_age_pairwise_ternary, opengenes_expression_binary_unmasked
+- เพิ่ม notebooks/baseline.py (Ridge + HistGradientBoosting)
+
+## 2026-09-25 (ต่อ) — ขั้นที่ 3 ❌ baseline ชนะ LLM
+- 5-fold CV แบ่งตามคน, 4206 คน x 30 ค่า (หน่วยแปลงครบ, ค่าว่าง 7%), 2102 คู่
+- Ridge: MAE 9.7 ปี | pairwise 82.8% [81.1–84.3] | 0-10 61.3 / 10-20 74.6 / 20-40 90.5 / 40+ 98.4
+- HistGradientBoosting: MAE 7.7 ปี | pairwise 87.9% [86.5–89.2] | 0-10 67.8 / 10-20 82.7 / 20-40 95.0 / 40+ 98.9
+- LLM Mk.4: 79.2% [77.4–80.8] -> แพ้ทั้งสองสูตรชัดเจน ทุกช่วงอายุ
+- ข้อแฟร์: baseline ได้ฝึกบนข้อมูลกระจายเดียวกัน (~3.3k คน/fold), LLM zero-shot; ยังไม่ได้วัดข้อดีของ LLM (หลาย modality, อธิบายได้)
+- ข้อสรุป: สำหรับทายอายุจากผลเลือดล้วน ใช้ GBoost ดีกว่า LLM ตัวนี้
