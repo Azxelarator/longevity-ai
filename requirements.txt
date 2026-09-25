@@ -2,3 +2,5 @@ datasets
 transformers
 accelerate
 scikit-learn
+lifelines
+pandas
