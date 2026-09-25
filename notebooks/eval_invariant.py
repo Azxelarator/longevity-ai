@@ -12,7 +12,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 MODEL = "LiquidAI/LFM2-1.2B-Longevity"
 TASK = "nhanes_age_pairwise"
-LIMIT = int(sys.argv[1]) if len(sys.argv) > 1 else 200
+LIMIT = (10**9 if sys.argv[1] == "all" else int(sys.argv[1])) if len(sys.argv) > 1 else 200
+OUT = "results/eval_invariant_all.csv" if LIMIT >= 10**9 else "results/eval_invariant.csv"
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 tok = AutoTokenizer.from_pretrained(MODEL)
@@ -62,7 +63,7 @@ for row in ds[split]:
                      pA_orig=round(pa1, 4), pA_swapped=round(pa2, 4), score=round(score, 4),
                      pred_single="A" if pa1 > 0.5 else "B",
                      pred_invariant="A" if score > 0.5 else "B"))
-    if len(rows) % 50 == 0:
+    if len(rows) % (50 if LIMIT <= 500 else 250) == 0:
         print(f"{len(rows)} ข้อ... ({time.time()-t0:.0f}s)")
     if len(rows) >= LIMIT:
         break
@@ -72,9 +73,16 @@ acc_single = sum(r["pred_single"] == r["gold"] for r in rows) / n
 acc_inv = sum(r["pred_invariant"] == r["gold"] for r in rows) / n
 predA = sum(r["pred_invariant"] == "A" for r in rows)
 bias_raw = sum(r["pA_orig"] for r in rows) / n
+def wilson(k, n, z=1.96):
+    """ช่วงความเชื่อมั่น 95% ของสัดส่วน (Wilson) — คืน (ต่ำ, สูง)"""
+    p = k / n; d = 1 + z*z/n
+    c = (p + z*z/(2*n)) / d; h = z * ((p*(1-p)/n + z*z/(4*n*n)) ** 0.5) / d
+    return c - h, c + h
 print(f"\n===== Mk.4 ({n} ข้อ, {TASK}) =====")
 print(f"ถามลำดับเดียว (argmax)      : {acc_single:.1%}")
 print(f"order-invariant (เฉลี่ย 2 ลำดับ): {acc_inv:.1%}   consistency = 100% โดยนิยาม")
+lo1, hi1 = wilson(round(acc_single*n), n); lo2, hi2 = wilson(round(acc_inv*n), n)
+print(f"ช่วงเชื่อมั่น 95%: ลำดับเดียว [{lo1:.1%}, {hi1:.1%}] | invariant [{lo2:.1%}, {hi2:.1%}]")
 print(f"ค่าเฉลี่ย P(A) ลำดับเดียว    : {bias_raw:.2f}  (ไม่เอียง = 0.50)")
 print(f"ทาย A/B หลังแก้              : {predA}/{n-predA}")
 
@@ -86,6 +94,6 @@ for lo, hi in [(0, 10), (10, 20), (20, 40), (40, 200)]:
         print(f"  {lo:>2}-{hi:<3} ปี: {sum(r['pred_invariant']==r['gold'] for r in b)/len(b):.1%} ({len(b)} ข้อ)")
 print(f"เวลา: {time.time()-t0:.0f}s")
 
-with open("results/eval_invariant.csv", "w", newline="", encoding="utf-8") as f:
+with open(OUT, "w", newline="", encoding="utf-8") as f:
     w = csv.DictWriter(f, fieldnames=rows[0].keys()); w.writeheader(); w.writerows(rows)
-print("บันทึกไว้ที่ results/eval_invariant.csv")
+print("บันทึกไว้ที่", OUT)

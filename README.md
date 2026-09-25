@@ -22,11 +22,14 @@ Task: `nhanes_age_pairwise` — given two people's blood test results, which one
 | Mk.2.1 | Trust only answers that stay consistent after swapping | 200 | **86.2%** accuracy, but only answers 65% of items |
 | Mk.3 | **Label swap** (rename A↔B, keep data in place) on 4 domains | 30 each | Accuracy collapses after relabeling: blood 70→47%, DNA methylation 80→33%, transcriptomics 67→40%, proteomics 47→33% → the model binds answers to **position, not label** |
 | Mk.4 | **Order-invariant scoring**: read P(A) vs P(B), average over both orders | 200 | **79.0%** accuracy, **100% consistency by construction**, answers every item. Mean P(A) was 0.39 before the fix (unbiased = 0.50) |
+| Mk.4 (full) | Same, on the **entire** task | 2,102 | Single-order **71.2%** [95% CI 69.2–73.1] → order-invariant **79.2%** [77.4–80.8]. Intervals do not overlap. |
 
-Accuracy by age gap (Mk.4): 0–10 yrs 62.9% · 10–20 yrs 67.3% · 20–40 yrs 85.4% · 40+ yrs 100%.
+Accuracy by age gap (Mk.4, full 2,102 items): 0–10 yrs 57.7% · 10–20 yrs 71.2% · 20–40 yrs 86.2% · 40+ yrs 96.0%.
 **Remaining weakness:** distinguishing people less than ~20 years apart.
 
 ### Caveats
+- LongevityBench releases only the `eval` split; we cannot independently check train/test overlap (the paper splits NHANES by survey wave).
+- The dataset card does not report per-task scores, so we have not yet compared our numbers to the paper's.
 - Mk.3 uses 30 items per domain (±~15% noise) and places "B" before "A", a format the model never saw in training — a harsher test than normal use.
 - These are findings about robustness to prompt format, not a judgment of the original paper's results.
 
