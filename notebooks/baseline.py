@@ -2,7 +2,7 @@ r"""ขั้นที่ 3: baseline แบบง่าย (ไม่ใช้ 
 - อ่านค่าเลือดจาก nhanes_age_regression (1 คน/ข้อ + อายุจริง), แปลงหน่วยให้ตรงกัน
 - 5-fold cross-validation แบ่งตามคน -> ทุกคนได้อายุที่ทายจากสูตรที่ไม่เคยเห็นเขา
 - เอาอายุที่ทายไปตอบข้อสอบเทียบสองคน 2102 ข้อ แล้วเทียบกับ LLM (79.2%)"""
-import json, re, time
+import csv, json, re, time
 import numpy as np
 from datasets import load_dataset
 from sklearn.model_selection import KFold
@@ -109,6 +109,11 @@ for name, make in models.items():
         g = abs(aa - ab)
         key = "0-10" if g < 10 else "10-20" if g < 20 else "20-40" if g < 40 else "40+"
         bins.setdefault(key, []).append(ok)
+    if name.startswith("GBoost"):  # เก็บผลรายคู่ไว้ให้ combine.py ใช้
+        with open("results/baseline_pairs.csv", "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f); w.writerow(["i", "age_A", "age_B", "predA", "predB"])
+            for i, p in enumerate(pairs, 1):
+                w.writerow([i, p["A"][1], p["B"][1], round(oof[idx[p["A"][0]]], 3), round(oof[idx[p["B"][0]]], 3)])
     n = len(pairs); lo, hi = wilson(correct, n)
     print(f"== {name} ==")
     print(f"  ทายอายุคลาดเฉลี่ย (MAE): {mae:.1f} ปี")
